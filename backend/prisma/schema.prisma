@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  VIEWER
+  EDITOR
+  ADMIN
+}
+
+model User {
+  id             String           @id @default(cuid())
+  clerkId        String           @unique
+  email          String           @unique
+  name           String
+  avatarUrl      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  documents      Document[]       @relation("OwnerDocuments")
+  documentAccess DocumentAccess[]
+  comments       Comment[]
+}
+
+model Document {
+  id           String             @id @default(cuid())
+  title        String             @default("Untitled")
+  content      Json?
+  ownerId      String
+  isPublic     Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  lastEditedAt DateTime           @default(now())
+
+  owner        User               @relation("OwnerDocuments", fields: [ownerId], references: [id])
+  accesses     DocumentAccess[]
+  versions     DocumentVersion[]
+  comments     Comment[]
+}
+
+model DocumentAccess {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  role       Role
+  createdAt  DateTime @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+}
+
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String
+  content       Json?
+  savedById     String
+  versionNumber Int
+  createdAt     DateTime @default(now())
+
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  documentId String
+  authorId   String
+  content    String
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
